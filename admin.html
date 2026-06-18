@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin · Merdz Sky Wellness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@0,600;0,700&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:oklch(97% 0.014 80);--cream-deep:oklch(94% 0.022 75);--sand:oklch(89% 0.03 70);
+  --ink:oklch(24% 0.02 55);--ink-soft:oklch(42% 0.025 55);--ink-faint:oklch(60% 0.02 55);
+  --sage-deep:oklch(50% 0.06 150);--sage-pale:oklch(92% 0.025 150);
+  --gold:oklch(72% 0.09 75);--gold-deep:oklch(56% 0.1 65);--white:oklch(99% 0.005 80);
+  --success:#2E7D5B;--error:#B3432D;
+  --radius-sm:6px;--radius-md:12px;--radius-lg:20px;--radius-pill:999px;
+  --shadow-sm:0 1px 3px oklch(24% 0.02 55 / 0.08);--shadow-md:0 12px 32px oklch(24% 0.02 55 / 0.10);
+  --font-display:'Playfair Display',Georgia,serif;--font-body:'Golos Text',system-ui,sans-serif;
+  --sp:16px;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:var(--font-body);background:var(--cream);color:var(--ink);line-height:1.55;font-size:15px;}
+h1,h2,h3{font-family:var(--font-display);font-weight:600;margin:0;}
+a{color:var(--sage-deep);}
+button{font-family:inherit;cursor:pointer;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border-radius:var(--radius-pill);
+  font-weight:600;font-size:14px;border:1px solid transparent;transition:background .2s,border-color .2s,opacity .2s;min-height:40px;}
+.btn:disabled{opacity:.55;cursor:not-allowed;}
+.btn-primary{background:var(--ink);color:var(--white);}
+.btn-primary:hover:not(:disabled){background:var(--sage-deep);}
+.btn-gold{background:var(--gold-deep);color:var(--white);}
+.btn-outline{background:transparent;color:var(--ink);border-color:oklch(24% 0.02 55 / 0.22);}
+.btn-outline:hover{border-color:var(--ink);}
+.btn-sm{padding:7px 13px;font-size:13px;min-height:32px;}
+.btn-danger{background:transparent;color:var(--error);border-color:oklch(58% 0.16 25 / 0.4);}
+.btn-danger:hover{background:oklch(58% 0.16 25 / 0.08);}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);background:var(--white);
+  border:1px solid oklch(24% 0.02 55 / 0.18);border-radius:var(--radius-md);padding:10px 12px;width:100%;min-height:40px;}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;border-color:var(--sage-deep);box-shadow:0 0 0 3px var(--sage-pale);}
+label{font-size:13px;font-weight:600;display:block;margin-bottom:5px;}
+.hidden{display:none !important;}
+
+/* Login */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.login-card{background:var(--white);border:1px solid oklch(24% 0.02 55 / 0.07);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-md);padding:36px 30px;max-width:380px;width:100%;}
+.login-card h1{font-size:24px;margin-bottom:6px;}
+.login-card p{color:var(--ink-soft);font-size:14px;margin:0 0 20px;}
+.login-card .err{color:var(--error);font-size:13px;font-weight:600;margin-top:10px;min-height:18px;}
+.demo-note{background:var(--sage-pale);color:var(--sage-deep);font-size:12.5px;font-weight:600;padding:9px 12px;border-radius:var(--radius-md);margin-bottom:16px;}
+
+/* App shell */
+.topbar{background:var(--ink);color:var(--white);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.topbar .brand{font-family:var(--font-display);font-size:18px;font-weight:700;}
+.topbar .brand span{color:var(--gold);}
+.topbar .right{display:flex;align-items:center;gap:10px;}
+.demo-badge{background:var(--gold);color:var(--ink);font-size:11px;font-weight:700;padding:3px 9px;border-radius:var(--radius-pill);}
+.tabs{display:flex;gap:4px;background:var(--cream-deep);padding:0 20px;overflow-x:auto;border-bottom:1px solid oklch(24% 0.02 55 / 0.08);}
+.tab{background:none;border:none;padding:14px 14px;font-size:14px;font-weight:600;color:var(--ink-faint);border-bottom:2px solid transparent;white-space:nowrap;}
+.tab.is-active{color:var(--ink);border-bottom-color:var(--gold-deep);}
+.wrap{max-width:1120px;margin:0 auto;padding:24px 20px 60px;}
+.view{display:none;}
+.view.is-active{display:block;}
+
+/* Cards / stats */
+.stats{display:grid;gap:14px;grid-template-columns:repeat(2,1fr);margin-bottom:24px;}
+@media(min-width:760px){.stats{grid-template-columns:repeat(4,1fr);}}
+.stat{background:var(--white);border:1px solid oklch(24% 0.02 55 / 0.07);border-radius:var(--radius-md);padding:16px 18px;box-shadow:var(--shadow-sm);}
+.stat .n{font-family:var(--font-display);font-size:28px;font-weight:700;}
+.stat .l{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);font-weight:700;}
+
+.panel{background:var(--white);border:1px solid oklch(24% 0.02 55 / 0.07);border-radius:var(--radius-md);padding:18px;box-shadow:var(--shadow-sm);margin-bottom:20px;}
+.panel h2{font-size:18px;margin-bottom:14px;}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:16px;}
+.toolbar .f{flex:1;min-width:130px;}
+.toolbar .f.grow{flex:2;min-width:180px;}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+th,td{text-align:left;padding:10px 10px;border-bottom:1px solid oklch(24% 0.02 55 / 0.08);white-space:nowrap;}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);}
+tbody tr{cursor:pointer;}
+tbody tr:hover{background:var(--cream);}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:var(--radius-pill);text-transform:capitalize;}
+.pill.paid,.pill.confirmed{background:var(--sage-pale);color:var(--sage-deep);}
+.pill.awaiting_payment,.pill.pending{background:oklch(90% 0.05 75);color:var(--gold-deep);}
+.pill.cancelled,.pill.expired,.pill.payment_failed{background:oklch(90% 0.04 25);color:var(--error);}
+.pill.refunded{background:var(--sand);color:var(--ink-soft);}
+.empty{text-align:center;color:var(--ink-faint);padding:30px;}
+
+/* Modal */
+.modal{position:fixed;inset:0;background:oklch(15% 0.02 55 / .55);display:none;align-items:center;justify-content:center;padding:20px;z-index:50;}
+.modal.is-open{display:flex;}
+.modal-card{background:var(--white);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:26px;}
+.modal-card h2{margin-bottom:12px;}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:7px 0;border-bottom:1px solid oklch(24% 0.02 55 / 0.06);}
+.kv span:first-child{color:var(--ink-soft);}
+.modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+.grid2{display:grid;gap:12px;grid-template-columns:1fr 1fr;}
+.grid2 .full{grid-column:1/-1;}
+.close-x{float:right;background:none;border:none;font-size:22px;color:var(--ink-faint);line-height:1;}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,16px);background:var(--ink);color:var(--white);
+  padding:12px 20px;border-radius:var(--radius-pill);font-size:14px;box-shadow:var(--shadow-md);z-index:80;
+  opacity:0;visibility:hidden;transition:opacity .25s,transform .25s,visibility .25s;max-width:90vw;text-align:center;}
+.toast.is-visible{opacity:1;visibility:visible;transform:translate(-50%,0);}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginView">
+  <form class="login-card" id="loginForm">
+    <h1>Admin access</h1>
+    <p>Merdz Sky Wellness — reservations</p>
+    <div class="demo-note hidden" id="loginDemoNote">Demo mode: the password is <strong>demo</strong> until you set ADMIN_PASSWORD in Netlify.</div>
+    <label for="adminPw">Password</label>
+    <input type="password" id="adminPw" autocomplete="current-password" autofocus>
+    <div class="err" id="loginErr"></div>
+    <button class="btn btn-primary" type="submit" id="loginBtn" style="width:100%;margin-top:14px">Sign in</button>
+  </form>
+</div>
+
+<!-- APP -->
+<div class="hidden" id="appView">
+  <div class="topbar">
+    <div class="brand">Merdz<span>Admin</span> <span class="demo-badge hidden" id="appDemoBadge">DEMO</span></div>
+    <div class="right">
+      <button class="btn btn-outline btn-sm" id="refreshBtn" style="color:#fff;border-color:rgba(255,255,255,.3)">Refresh</button>
+      <button class="btn btn-outline btn-sm" id="logoutBtn" style="color:#fff;border-color:rgba(255,255,255,.3)">Log out</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab is-active" data-view="dashboard">Dashboard</button>
+    <button class="tab" data-view="bookings">Reservations</button>
+    <button class="tab" data-view="blocked">Blocked dates</button>
+    <button class="tab" data-view="settings">Settings</button>
+  </div>
+
+  <div class="wrap">
+    <!-- Dashboard -->
+    <section class="view is-active" id="view-dashboard">
+      <div class="stats" id="statCards"></div>
+      <div class="panel">
+        <h2>Upcoming reservations</h2>
+        <div class="tbl-wrap"><table><thead><tr>
+          <th>Ref</th><th>Guest</th><th>Check-in</th><th>Check-out</th><th>Total</th><th>Status</th>
+        </tr></thead><tbody id="upcomingBody"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- Bookings -->
+    <section class="view" id="view-bookings">
+      <div class="panel">
+        <div class="toolbar">
+          <div class="f grow"><label>Search</label><input id="fltSearch" placeholder="Name, email or reference"></div>
+          <div class="f"><label>Status</label><select id="fltStatus">
+            <option value="">All</option><option value="awaiting_payment">Awaiting payment</option>
+            <option value="paid">Paid</option><option value="confirmed">Confirmed</option>
+            <option value="cancelled">Cancelled</option><option value="expired">Expired</option>
+            <option value="payment_failed">Payment failed</option><option value="refunded">Refunded</option>
+          </select></div>
+          <div class="f"><label>From</label><input type="date" id="fltFrom"></div>
+          <div class="f"><label>To</label><input type="date" id="fltTo"></div>
+          <button class="btn btn-outline btn-sm" id="applyFilters">Filter</button>
+          <button class="btn btn-outline btn-sm" id="exportBtn">Export CSV</button>
+          <button class="btn btn-gold btn-sm" id="newBookingBtn">+ New</button>
+        </div>
+        <div class="tbl-wrap"><table><thead><tr>
+          <th>Ref</th><th>Guest</th><th>Dates</th><th>Nights</th><th>Total</th><th>Payment</th><th>Status</th>
+        </tr></thead><tbody id="bookingsBody"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- Blocked -->
+    <section class="view" id="view-blocked">
+      <div class="panel">
+        <h2>Block dates</h2>
+        <div class="grid2">
+          <div><label>From</label><input type="date" id="blkFrom"></div>
+          <div><label>To (exclusive)</label><input type="date" id="blkTo"></div>
+          <div class="full"><label>Reason (optional)</label><input id="blkReason" placeholder="e.g. Maintenance, owner stay"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="blockBtn" style="margin-top:12px">Block dates</button>
+      </div>
+      <div class="panel">
+        <h2>Blocked ranges</h2>
+        <div class="tbl-wrap"><table><thead><tr><th>From</th><th>To</th><th>Reason</th><th></th></tr></thead>
+          <tbody id="blockedBody"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section class="view" id="view-settings">
+      <div class="panel" style="max-width:560px">
+        <h2>Booking settings</h2>
+        <div class="grid2">
+          <div><label>Price per night</label><input type="number" id="setPrice" min="0" step="1"></div>
+          <div><label>Cleaning fee</label><input type="number" id="setCleaning" min="0" step="1"></div>
+          <div><label>Additional fees</label><input type="number" id="setAdditional" min="0" step="1"></div>
+          <div><label>Currency</label><input id="setCurrency" maxlength="8"></div>
+          <div><label>Maximum guests</label><input type="number" id="setMaxGuests" min="1" step="1"></div>
+          <div><label>Minimum nights</label><input type="number" id="setMinNights" min="1" step="1"></div>
+          <div><label>Hold duration (minutes)</label><input type="number" id="setHold" min="1" step="1"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="saveSettings" style="margin-top:14px">Save settings</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Detail modal -->
+<div class="modal" id="detailModal">
+  <div class="modal-card">
+    <button class="close-x" data-close>&times;</button>
+    <h2 id="detailTitle">Reservation</h2>
+    <div id="detailBody"></div>
+    <div class="modal-actions" id="detailActions"></div>
+  </div>
+</div>
+
+<!-- New booking modal -->
+<div class="modal" id="newModal">
+  <div class="modal-card">
+    <button class="close-x" data-close>&times;</button>
+    <h2>Manual reservation</h2>
+    <div class="grid2">
+      <div class="full"><label>Guest name *</label><input id="nbName"></div>
+      <div><label>Email</label><input id="nbEmail" type="email"></div>
+      <div><label>Phone</label><input id="nbPhone"></div>
+      <div><label>Check-in *</label><input id="nbCheckin" type="date"></div>
+      <div><label>Check-out *</label><input id="nbCheckout" type="date"></div>
+      <div><label>Adults</label><input id="nbAdults" type="number" min="1" value="2"></div>
+      <div><label>Children</label><input id="nbChildren" type="number" min="0" value="0"></div>
+      <div class="full"><label>Special requests</label><input id="nbSpecial"></div>
+      <label class="full" style="font-weight:400;display:flex;gap:8px;align-items:center"><input type="checkbox" id="nbPaid" style="width:auto;min-height:auto"> Mark as paid (offline)</label>
+      <label class="full" style="font-weight:400;display:flex;gap:8px;align-items:center"><input type="checkbox" id="nbForce" style="width:auto;min-height:auto"> Override availability conflict</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" data-close>Cancel</button>
+      <button class="btn btn-primary btn-sm" id="nbCreate">Create reservation</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="assets/admin.js" defer></script>
+</body>
+</html>
