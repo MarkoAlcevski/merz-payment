@@ -1,0 +1,85 @@
+/* ============================================================
+   Merdz Cloudflare Turnstile protection
+   Works with the current Netlify build and future PHP/cPanel port.
+   ============================================================ */
+
+html.merdz-turnstile-lock,
+body.merdz-turnstile-lock {
+  overflow: hidden !important;
+}
+
+.merdz-turnstile-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(204, 164, 91, 0.22), transparent 34%),
+    rgba(9, 10, 13, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.merdz-turnstile-card {
+  width: min(430px, 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 26px;
+  padding: 28px;
+  background: linear-gradient(180deg, rgba(27, 29, 36, 0.98), rgba(14, 15, 19, 0.98));
+  color: #fff;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+  text-align: center;
+}
+
+.merdz-turnstile-kicker {
+  margin: 0 0 8px;
+  color: #d7b46a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.merdz-turnstile-card h2 {
+  margin: 0 0 10px;
+  color: #fff;
+  font-size: clamp(1.35rem, 4vw, 1.85rem);
+  line-height: 1.15;
+}
+
+.merdz-turnstile-card p {
+  margin: 0 auto 18px;
+  max-width: 34rem;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.55;
+}
+
+.merdz-turnstile-widget {
+  display: flex;
+  justify-content: center;
+  min-height: 72px;
+  margin: 18px 0 6px;
+}
+
+.merdz-turnstile-status {
+  min-height: 22px;
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.92rem;
+}
+
+.merdz-turnstile-status.is-error {
+  color: #ffb7b7;
+}
+
+.merdz-turnstile-status.is-ok {
+  color: #bff0c6;
+}
+
+.merdz-turnstile-note {
+  margin-top: 14px;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 0.78rem;
+}
