@@ -1,0 +1,20 @@
+name = "merz-payment"
+compatibility_date = "2026-07-03"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "."
+
+# Keep secrets in Cloudflare Pages dashboard, not here:
+# SUPABASE_URL
+# SUPABASE_SERVICE_ROLE_KEY
+# ADMIN_PASSWORD
+# ADMIN_SESSION_SECRET
+# PAYPAL_CLIENT_ID
+# PAYPAL_CLIENT_SECRET
+# PAYPAL_ENVIRONMENT
+# PAYPAL_CURRENCY
+# NLB_MODE
+# RESEND_API_KEY
+# EMAIL_FROM
+# OWNER_EMAIL
+# SITE_URL
+# ALLOWED_ORIGINS

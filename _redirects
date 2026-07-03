@@ -1,0 +1,2 @@
+# Cloudflare Pages Functions automatically serve /api/* from functions/api/[[path]].js
+# Keep this file empty for API rewrites. Static files stay unchanged.
