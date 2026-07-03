@@ -13,6 +13,8 @@ import * as nlbReturn from '../../netlify/functions/nlb-return.js';
 import * as paypalCaptureOrder from '../../netlify/functions/paypal-capture-order.js';
 import * as paypalCreateOrder from '../../netlify/functions/paypal-create-order.js';
 import * as settings from '../../netlify/functions/settings.js';
+import * as turnstileConfig from '../../netlify/functions/turnstile-config.js';
+import * as turnstileVerify from '../../netlify/functions/turnstile-verify.js';
 
 const handlers = {
   'admin-login': adminLogin,
@@ -27,6 +29,8 @@ const handlers = {
   'paypal-capture-order': paypalCaptureOrder,
   'paypal-create-order': paypalCreateOrder,
   settings,
+  'turnstile-config': turnstileConfig,
+  'turnstile-verify': turnstileVerify,
 };
 
 export async function onRequest(context) {
