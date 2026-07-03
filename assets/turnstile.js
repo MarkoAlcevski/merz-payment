@@ -1,7 +1,8 @@
 /* ============================================================
    Merdz Cloudflare Turnstile anti-bot layer
-   - Launch gate: verifies visitors before the public site/API calendar loads.
-   - Booking gate: injects a fresh Turnstile token into /api/create-booking.
+   - Launch gate: quick check when the public website opens.
+   - Transfer gate: second check ONLY before Request a Transfer / driver SMS.
+   - Booking/payment is NOT gated here, per client requirement.
    - Dual hosting: supports Netlify clean endpoints and future PHP .php endpoints.
    ============================================================ */
 (function () {
@@ -9,20 +10,22 @@
 
   var API = "/api";
   var LAUNCH_OK_KEY = "MERDZ_TURNSTILE_LAUNCH_OK";
+  var TRANSFER_OK_KEY = "MERDZ_TURNSTILE_TRANSFER_OK_AT";
+  var TRANSFER_TOKEN_WINDOW_MS = 4 * 60 * 1000; // Cloudflare tokens expire after 5 min; keep margin.
   var CONFIG_CACHE = null;
   var CONFIG_READY = null;
   var TURNSTILE_READY = null;
   var launchReady = false;
   var launchWaiters = [];
-  var originalFetch = window.fetch.bind(window);
+  var originalFetch = window.fetch ? window.fetch.bind(window) : null;
 
   var T = {
     en: {
       secureAccess: "Secure access",
       launchTitle: "Quick security check",
       launchBody: "Please complete this quick check before entering the website. It helps protect reservations from spam bots.",
-      bookingTitle: "Reservation security check",
-      bookingBody: "Please complete one more quick check before creating your reservation hold.",
+      transferTitle: "Transfer request security check",
+      transferBody: "Please complete this quick check before sending your transfer request. This protects the driver from spam messages.",
       loading: "Loading protection…",
       verifying: "Verifying…",
       success: "Verified. You can continue.",
@@ -34,8 +37,8 @@
       secureAccess: "Безбеден пристап",
       launchTitle: "Брза безбедносна проверка",
       launchBody: "Завршете ја оваа кратка проверка пред да влезете на веб-страната. Ова помага да се заштитат резервациите од спам ботови.",
-      bookingTitle: "Безбедносна проверка за резервација",
-      bookingBody: "Завршете уште една кратка проверка пред да ја креирате резервацијата.",
+      transferTitle: "Безбедносна проверка за трансфер",
+      transferBody: "Завршете ја оваа кратка проверка пред да го испратите барањето за трансфер. Ова го штити возачот од спам пораки.",
       loading: "Се вчитува заштитата…",
       verifying: "Се проверува…",
       success: "Потврдено. Може да продолжите.",
@@ -115,8 +118,8 @@
     TURNSTILE_READY = new Promise(function (resolve, reject) {
       var existing = document.querySelector('script[data-merdz-turnstile="true"]');
       if (existing) {
-        existing.addEventListener("load", resolve);
-        existing.addEventListener("error", reject);
+        existing.addEventListener("load", resolve, { once: true });
+        existing.addEventListener("error", reject, { once: true });
         return;
       }
 
@@ -153,17 +156,40 @@
       absolute.indexOf(API + cleanPath + ".php?") === 0;
   }
 
+  function looksLikeTransferApi(input) {
+    var url = typeof input === "string" ? input : (input && input.url) || "";
+    if (!url) return false;
+    var u = url.indexOf(location.origin) === 0 ? url.slice(location.origin.length) : url;
+    if (u.indexOf(API + "/") !== 0) return false;
+    return /transfer|transport|driver|sms|twilio/i.test(u);
+  }
+
   function methodOf(init) {
     return String((init && init.method) || "GET").toUpperCase();
   }
 
-  function withJsonBody(init, extra) {
+  function withTokenBody(init, token) {
     init = init || {};
+
+    if (init.body instanceof FormData) {
+      var fd = init.body;
+      fd.set("turnstileToken", token);
+      fd.set("cf-turnstile-response", token);
+      return init;
+    }
+
+    if (init.body instanceof URLSearchParams) {
+      init.body.set("turnstileToken", token);
+      init.body.set("cf-turnstile-response", token);
+      return init;
+    }
+
     var body = {};
     if (init.body && typeof init.body === "string") {
       try { body = JSON.parse(init.body); } catch (e) { body = {}; }
     }
-    Object.keys(extra || {}).forEach(function (k) { body[k] = extra[k]; });
+    body.turnstileToken = token;
+    body["cf-turnstile-response"] = token;
 
     var headers = new Headers(init.headers || {});
     headers.set("Content-Type", "application/json");
@@ -198,7 +224,7 @@
     var node = overlay.querySelector("[data-status]");
     if (!node) return;
     node.className = "merdz-turnstile-status" + (kind ? " is-" + kind : "");
-    node.textContent = message;
+    node.textContent = message || "";
   }
 
   async function challenge(action, mode) {
@@ -210,8 +236,8 @@
 
     return new Promise(function (resolve, reject) {
       var overlay = makeOverlay({
-        title: action === "booking" ? t("bookingTitle") : t("launchTitle"),
-        body: action === "booking" ? t("bookingBody") : t("launchBody")
+        title: action === "transfer" ? t("transferTitle") : t("launchTitle"),
+        body: action === "transfer" ? t("transferBody") : t("launchBody")
       });
 
       function cleanup() {
@@ -250,9 +276,8 @@
             callback: async function (token) {
               if (!token) return fail(t("failed"));
 
-              // Launch tokens are validated immediately to unlock the public site.
-              // Booking tokens are NOT pre-validated here because Cloudflare tokens
-              // are single-use. They are passed to /api/create-booking and verified there.
+              // Launch tokens are validated immediately to unlock the site.
+              // Transfer tokens are passed to the transfer/SMS endpoint and verified server-side.
               if (mode === "server-verify") {
                 setStatus(overlay, t("verifying"));
                 try {
@@ -290,6 +315,15 @@
     });
   }
 
+  async function requireTransferToken() {
+    await waitForLaunch();
+    var cfg = await loadConfig();
+    if (!cfg.enabled) return "";
+    var token = await challenge("transfer", "pass-through");
+    sessionSet(TRANSFER_OK_KEY, String(Date.now()));
+    return token;
+  }
+
   async function startLaunchGate() {
     var cfg = await loadConfig();
     if (!cfg.enabled) {
@@ -311,27 +345,120 @@
     }
   }
 
-  window.fetch = async function (input, init) {
-    init = init || {};
+  function textOf(node) {
+    return ((node && node.textContent) || "").replace(/\s+/g, " ").trim().toLowerCase();
+  }
 
-    // Keep the calendar/API quiet until the launch protection is passed.
-    if (isApiUrl(input, "/availability")) {
-      await waitForLaunch();
+  function closestTransferContainer(node) {
+    var cur = node;
+    while (cur && cur !== document.documentElement) {
+      var idc = ((cur.id || "") + " " + (cur.className || "") + " " + (cur.getAttribute && (cur.getAttribute("data-section") || cur.getAttribute("aria-label") || ""))).toLowerCase();
+      var txt = textOf(cur);
+      if (/transfer|transport|driver|airport/.test(idc)) return cur;
+      if ((txt.indexOf("request a transfer") !== -1 || txt.indexOf("airport transfer") !== -1) && txt.length < 2500) return cur;
+      cur = cur.parentElement;
     }
+    return null;
+  }
 
-    // The real protection for fake reservations: a fresh Turnstile token is
-    // injected into the server-side create-booking request.
-    if (isApiUrl(input, "/create-booking") && methodOf(init) === "POST") {
-      await waitForLaunch();
-      var cfg = await loadConfig();
-      if (cfg.enabled) {
-        var token = await challenge("booking", "pass-through");
-        init = withJsonBody(init, { turnstileToken: token });
+  function looksLikeTransferForm(form) {
+    if (!form) return false;
+    var attr = ((form.id || "") + " " + (form.name || "") + " " + (form.className || "") + " " + (form.action || "")).toLowerCase();
+    if (/transfer|transport|driver|sms|airport/.test(attr)) return true;
+    return !!closestTransferContainer(form);
+  }
+
+  function looksLikeTransferClick(target) {
+    var clickable = target && target.closest && target.closest("button, a, [role='button']");
+    if (!clickable) return false;
+
+    var attr = ((clickable.id || "") + " " + (clickable.name || "") + " " + (clickable.className || "") + " " + (clickable.getAttribute("href") || "") + " " + (clickable.getAttribute("data-action") || "")).toLowerCase();
+    var txt = textOf(clickable);
+
+    if (/transfer|transport|driver|sms/.test(attr)) return true;
+    if (/transfer|driver|airport/.test(txt) && /send|request|book|confirm|submit|испрати|побарај/i.test(txt)) return true;
+    if ((txt.indexOf("send request") !== -1 || txt.indexOf("open whatsapp") !== -1) && closestTransferContainer(clickable)) return true;
+    return false;
+  }
+
+  function installTransferDomGate() {
+    document.addEventListener("submit", async function (ev) {
+      var form = ev.target;
+      if (!looksLikeTransferForm(form)) return;
+      if (form.getAttribute("data-merdz-turnstile-ok") === "1") {
+        form.removeAttribute("data-merdz-turnstile-ok");
+        return;
       }
-    }
 
-    return originalFetch(input, init);
-  };
+      ev.preventDefault();
+      ev.stopPropagation();
+      try {
+        var token = await requireTransferToken();
+        if (token) {
+          var input = form.querySelector('input[name="turnstileToken"]');
+          if (!input) {
+            input = document.createElement("input");
+            input.type = "hidden";
+            input.name = "turnstileToken";
+            form.appendChild(input);
+          }
+          input.value = token;
+        }
+        form.setAttribute("data-merdz-turnstile-ok", "1");
+        if (form.requestSubmit) form.requestSubmit();
+        else form.submit();
+      } catch (err) {}
+    }, true);
 
+    document.addEventListener("click", async function (ev) {
+      if (!looksLikeTransferClick(ev.target)) return;
+      var clickable = ev.target.closest("button, a, [role='button']");
+      var form = clickable && clickable.closest && clickable.closest("form");
+      if (form && looksLikeTransferForm(form)) return; // submit handler handles it.
+      if (clickable && clickable.getAttribute("data-merdz-turnstile-ok") === "1") {
+        clickable.removeAttribute("data-merdz-turnstile-ok");
+        return;
+      }
+
+      ev.preventDefault();
+      ev.stopPropagation();
+      try {
+        await requireTransferToken();
+        if (!clickable) return;
+        clickable.setAttribute("data-merdz-turnstile-ok", "1");
+        var href = clickable.getAttribute("href");
+        if (href && href !== "#") {
+          window.location.href = href;
+        } else {
+          clickable.click();
+        }
+      } catch (err) {}
+    }, true);
+  }
+
+  if (originalFetch) {
+    window.fetch = async function (input, init) {
+      init = init || {};
+
+      // Keep calendar/API quiet until launch gate is passed.
+      if (isApiUrl(input, "/availability")) {
+        await waitForLaunch();
+      }
+
+      // IMPORTANT: No create-booking/payment CAPTCHA here.
+      // Only transfer/SMS/driver endpoints get the second token.
+      if (looksLikeTransferApi(input) && methodOf(init) !== "GET") {
+        var cfg = await loadConfig();
+        if (cfg.enabled) {
+          var token = await requireTransferToken();
+          init = withTokenBody(init, token);
+        }
+      }
+
+      return originalFetch(input, init);
+    };
+  }
+
+  installTransferDomGate();
   startLaunchGate();
 })();

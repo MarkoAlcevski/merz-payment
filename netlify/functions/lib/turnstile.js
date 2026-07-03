@@ -1,107 +1,104 @@
-"use strict";
+/* ============================================================
+   Cloudflare Turnstile helpers for Merdz Netlify Functions
+   ============================================================ */
 
-/**
- * Cloudflare Turnstile verification helper for Netlify Functions.
- * Public site key is returned only by /api/turnstile-config.
- * Secret key stays server-side in Netlify environment variables.
- */
+const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
-var SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-
-function env(name, fallback) {
-  return process.env[name] || fallback || "";
-}
-
-function siteKey() {
-  return env("TURNSTILE_SITE_KEY") || env("CLOUDFLARE_TURNSTILE_SITE_KEY") || env("CF_TURNSTILE_SITE_KEY");
-}
-
-function secretKey() {
-  return env("TURNSTILE_SECRET_KEY") || env("CLOUDFLARE_TURNSTILE_SECRET_KEY") || env("CF_TURNSTILE_SECRET_KEY");
-}
-
-function enabled() {
-  var explicit = String(env("TURNSTILE_ENABLED", "")).toLowerCase();
-  if (explicit === "false" || explicit === "0" || explicit === "off") return false;
-  if (explicit === "true" || explicit === "1" || explicit === "on") return true;
-  return !!siteKey();
-}
-
-function clientIp(event) {
-  var h = (event && event.headers) || {};
-  return String(
-    h["x-nf-client-connection-ip"] ||
-    (h["x-forwarded-for"] ? String(h["x-forwarded-for"]).split(",")[0].trim() : "") ||
-    ""
-  );
-}
-
-function tokenFromBody(event, body) {
-  var h = (event && event.headers) || {};
-  return (
-    (body && (body.turnstileToken || body.cfTurnstileToken || body["cf-turnstile-response"])) ||
-    h["x-turnstile-token"] ||
-    h["X-Turnstile-Token"] ||
-    ""
-  );
-}
-
-async function verifyToken(event, token, expectedAction) {
-  if (!enabled()) return { ok: true, skipped: true };
-
-  var secret = secretKey();
-  if (!secret) {
-    return { ok: false, reason: "missing_secret" };
-  }
-
-  if (!token) {
-    return { ok: false, reason: "missing_token" };
-  }
-
-  var params = new URLSearchParams();
-  params.append("secret", secret);
-  params.append("response", token);
-
-  var ip = clientIp(event);
-  if (ip) params.append("remoteip", ip);
-
-  var res;
-  var data;
-  try {
-    res = await fetch(SITEVERIFY_URL, {
-      method: "POST",
-      body: params,
-      headers: { "Content-Type": "application/x-www-form-urlencoded" }
-    });
-    data = await res.json();
-  } catch (e) {
-    return { ok: false, reason: "network_error" };
-  }
-
-  if (!data || data.success !== true) {
-    return { ok: false, reason: "siteverify_failed", details: data && data["error-codes"] };
-  }
-
-  if (expectedAction && data.action && data.action !== expectedAction) {
-    return { ok: false, reason: "wrong_action" };
-  }
-
+function json(statusCode, body) {
   return {
-    ok: true,
-    hostname: data.hostname || "",
-    action: data.action || "",
-    challenge_ts: data.challenge_ts || ""
+    statusCode,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store"
+    },
+    body: JSON.stringify(body)
   };
 }
 
-async function verifyBody(event, body, expectedAction) {
-  return verifyToken(event, tokenFromBody(event, body), expectedAction);
+function isEnabled() {
+  return String(process.env.TURNSTILE_ENABLED || "").toLowerCase() === "true" &&
+    !!process.env.TURNSTILE_SITE_KEY &&
+    !!process.env.TURNSTILE_SECRET_KEY;
+}
+
+function publicConfig() {
+  return {
+    enabled: isEnabled(),
+    siteKey: isEnabled() ? process.env.TURNSTILE_SITE_KEY : ""
+  };
+}
+
+function getIp(event) {
+  const h = (event && event.headers) || {};
+  const forwarded = h["x-forwarded-for"] || h["X-Forwarded-For"] || "";
+  return String(forwarded).split(",")[0].trim() || h["client-ip"] || h["Client-Ip"] || "";
+}
+
+async function verifyToken(token, event, options = {}) {
+  if (!isEnabled()) {
+    return { success: true, skipped: true, reason: "turnstile_disabled" };
+  }
+
+  if (!token || typeof token !== "string") {
+    return { success: false, reason: "turnstile_required", message: "Security check is required." };
+  }
+
+  const params = new URLSearchParams();
+  params.set("secret", process.env.TURNSTILE_SECRET_KEY);
+  params.set("response", token);
+
+  const ip = getIp(event);
+  if (ip) params.set("remoteip", ip);
+
+  let cf;
+  try {
+    const res = await fetch(VERIFY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params
+    });
+    cf = await res.json();
+  } catch (err) {
+    return { success: false, reason: "turnstile_unavailable", message: "Security check could not be verified." };
+  }
+
+  if (!cf || !cf.success) {
+    return {
+      success: false,
+      reason: "turnstile_failed",
+      message: "Security check failed.",
+      errors: (cf && cf["error-codes"]) || []
+    };
+  }
+
+  if (options.action && cf.action && cf.action !== options.action) {
+    return {
+      success: false,
+      reason: "turnstile_action_mismatch",
+      message: "Security check action mismatch."
+    };
+  }
+
+  return { success: true, cf };
+}
+
+async function verifyBody(body, event, options = {}) {
+  const token = body && (body.turnstileToken || body.cfTurnstileToken || body["cf-turnstile-response"]);
+  return verifyToken(token, event, options);
+}
+
+function errorResponse(result) {
+  return json(403, {
+    error: result.reason || "turnstile_failed",
+    message: result.message || "Security check failed. Please try again."
+  });
 }
 
 module.exports = {
-  enabled: enabled,
-  siteKey: siteKey,
-  verifyToken: verifyToken,
-  verifyBody: verifyBody,
-  tokenFromBody: tokenFromBody
+  isEnabled,
+  publicConfig,
+  verifyToken,
+  verifyBody,
+  errorResponse,
+  json
 };
